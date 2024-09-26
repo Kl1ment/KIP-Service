@@ -1,6 +1,5 @@
 ﻿using KIP_Service.Core.Models;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Configuration;
+using KIP_Service.DataAccess.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,57 +9,83 @@ using System.Text.Json;
 namespace KIP_Service.Application.Services
 {
     public class TaskRefresher(
-        IConfiguration configuration,
-        IDistributedCache distributedCache,
         IServiceProvider serviceProvider,
         ILogger<TaskRefresher> logger) : IHostedService
     {
-        private readonly IConfiguration _configuration = configuration;
-        private readonly IDistributedCache _distributedCache = distributedCache;
         private readonly IServiceProvider _serviceProvider = serviceProvider;
         private readonly ILogger<TaskRefresher> _logger = logger;
 
-        public async Task RefreshAllNotCompletedTasks()
-        {
-            var connection = await ConnectionMultiplexer.ConnectAsync(_configuration.GetConnectionString("Redis"));
-
-            var endPoint = connection.GetEndPoints().First();
-
-            var keys = connection.GetServer(endPoint).Keys(pattern: "*").ToArray();
-
-            foreach (var key in keys)
-            {
-                var task = await _distributedCache.GetStringAsync(key.ToString());
-
-                QueryCache<RequestStatistic, UserStatistic>? query = null;
-
-                if (task != null)
-                    query = JsonSerializer.Deserialize<QueryCache<RequestStatistic, UserStatistic>>(task);
-
-                if (query != null && !query.IsCompleted)
-                {
-                    _logger.LogInformation($"Refresh query {query.Id}");
-
-                    query.CreatedDate = DateTime.Now;
-
-                    using (var scope = _serviceProvider.CreateAsyncScope())
-                    {
-                        var reportService = scope.ServiceProvider.GetRequiredService<IReportService>();
-
-                        reportService.ExecuteGetUserStatisticAsync(query);
-                    }
-                }
-            }
-        }
+        private IReportService _reportService;
+        private ICacheRepository _cacheRepository;
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            await RefreshAllNotCompletedTasks();
+            using (var scope = _serviceProvider.CreateAsyncScope())
+            {
+                _reportService = scope.ServiceProvider.GetRequiredService<IReportService>();
+                _cacheRepository = scope.ServiceProvider.GetRequiredService<ICacheRepository>();
+
+                await RefreshAllNotCompletedTasks();
+            }
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
+        }
+
+        public async Task RefreshAllNotCompletedTasks()
+        {
+            RedisKey[] keys = _cacheRepository.GetKeys();
+
+            foreach (var key in keys)
+            {
+                var queryString = await _cacheRepository.GetStringAsync(key.ToString());
+
+                QueryCache<object, object>? query = GetQuery(key, queryString);
+
+                if (query != null && !query.IsCompleted)
+                {
+                    _logger.LogInformation($"Refresh query {query.QueryName} {query.Id}");
+
+                    switch (query.QueryName)
+                    {
+                        case nameof(GetUserStatistic):
+                            GetUserStatistic(query);
+                            break;
+                    }
+                }
+            }
+        }
+
+        private void GetUserStatistic(QueryCache<object, object> query)
+        {
+            RequestStatistic? requestStatistic = JsonSerializer.Deserialize<RequestStatistic>(query.QueryDetails.ToString());
+
+            if (requestStatistic == null)
+            {
+                _logger.LogWarning($"Query {query.Id}. Lose data");
+                return;
+            }
+
+            QueryCache<RequestStatistic, UserStatistic> newQuery = new(
+                query.Id,
+                query.QueryName,
+                DateTime.Now,
+                requestStatistic);
+
+            _reportService.ExecuteGetUserStatisticAsync(newQuery);
+        }
+
+        private QueryCache<object, object>? GetQuery(RedisKey key, string? queryString)
+        {
+            if (queryString == null)
+            {
+                _logger.LogWarning($"Query {key} null");
+                return null;
+            }
+
+            return JsonSerializer.Deserialize<QueryCache<object, object>>(queryString);
         }
     }
 }

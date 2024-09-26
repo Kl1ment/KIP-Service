@@ -7,8 +7,8 @@ namespace Tests
 {
     public class UserServiceTests
     {
-        Mock<IUserRepository> _mockUserRepository = new();
-        Mock<IUserStatisticRepository> _mockUserStatisticRepository = new();
+        private Mock<IUserRepository> _mockUserRepository = new();
+        private Mock<IUserStatisticRepository> _mockUserStatisticRepository = new();
 
         [Fact]
         public async void CreateUserAsync_ResultCallUserRepositoryAddAsyncAndReturnTypeGuid()

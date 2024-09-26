@@ -1,18 +1,18 @@
 ﻿namespace KIP_Service.Core.Models
 {
-    public class QueryCache<DetailsType, ResultType>(
+    public class QueryCache<TDetails, TResult>(
         Guid id,
         string queryName,
         DateTime createdDate,
-        DetailsType queryDetails,
-        ResultType? result = default,
+        TDetails queryDetails,
+        TResult? result = default,
         bool isCompleted = false)
     {
         public Guid Id { get; set; } = id;
         public string QueryName { get; set; } = queryName;
         public DateTime CreatedDate { get; set; } = createdDate;
-        public DetailsType QueryDetails { get; set; } = queryDetails;
-        public ResultType? Result { get; set; } = result;
+        public TDetails QueryDetails { get; set; } = queryDetails;
+        public TResult? Result { get; set; } = result;
         public bool IsCompleted { get; set; } = isCompleted;
     }
 }

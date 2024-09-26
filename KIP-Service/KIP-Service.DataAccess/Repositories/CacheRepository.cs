@@ -1,10 +1,13 @@
 ﻿using KIP_Service.Core.Models;
 using Microsoft.Extensions.Caching.Distributed;
+using StackExchange.Redis;
 using System.Text.Json;
 
 namespace KIP_Service.DataAccess.Repositories
 {
-    public class CacheRepository(IDistributedCache cache) : ICacheRepository
+    public class CacheRepository(
+        IDistributedCache cache,
+        RedisContext redisContext) : ICacheRepository
     {
         private readonly IDistributedCache _cache = cache;
 
@@ -18,11 +21,26 @@ namespace KIP_Service.DataAccess.Repositories
             return JsonSerializer.Deserialize<QueryCache<T, A>>(request);
         }
 
+        public async Task<string?> GetStringAsync(string str)
+        {
+            return await _cache.GetStringAsync(str);
+        }
+
+        public RedisKey[] GetKeys()
+        {
+            var endPoint = redisContext.Connection.GetEndPoints().First();
+
+            var keys = redisContext.Connection.GetServer(endPoint).Keys(pattern: "*").ToArray();
+
+            return keys;
+        }
+
         public async Task SetCacheAsync<T, A>(Guid queryId, QueryCache<T, A> queryCache)
         {
             await _cache.SetStringAsync(
                 queryId.ToString(),
                 JsonSerializer.Serialize(queryCache));
         }
+
     }
 }

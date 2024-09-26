@@ -16,6 +16,7 @@ namespace KIP_Service.DataAccess
                 options.Configuration = configuration.GetConnectionString("Redis");
             });
 
+            services.AddScoped<RedisContext>();
             services.AddScoped<KIP_ServiceDbContext>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUserStatisticRepository, UserStatisticRepository>();
