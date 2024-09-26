@@ -16,11 +16,7 @@ namespace KIP_Service.DataAccess
                 options.Configuration = configuration.GetConnectionString("Redis");
             });
 
-            services.AddDbContext<KIP_ServiceDbContext>(options =>
-            {
-                options.UseNpgsql(configuration.GetConnectionString(nameof(KIP_ServiceDbContext)));
-            });
-
+            services.AddScoped<KIP_ServiceDbContext>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUserStatisticRepository, UserStatisticRepository>();
             services.AddScoped<ICacheRepository, CacheRepository>();

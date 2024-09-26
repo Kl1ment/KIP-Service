@@ -2,7 +2,6 @@
 using KIP_Service.Core.Models;
 using KIP_Service.DataAccess.Repositories;
 using Microsoft.Extensions.Configuration;
-using StackExchange.Redis;
 
 namespace KIP_Service.Application.Services
 {
@@ -15,45 +14,54 @@ namespace KIP_Service.Application.Services
         private readonly ICacheRepository _cacheRepository = cacheRepository;
         private readonly int ExpectedSeconds = int.Parse(configuration.GetSection(nameof(ExpectedSeconds)).Value);
 
-        public async Task<Guid> GetUserStatisticAsync(Guid userId, DateTime from, DateTime to)
+        public Guid GetUserStatistic(Guid userId, DateTime from, DateTime to)
         {
             var requestStatistic = new RequestStatistic(userId, from, to);
-
-            var queryCache = new QueryCache<RequestStatistic>(
-                nameof(GetUserStatisticAsync),
+            
+            var queryCache = new QueryCache<RequestStatistic, UserStatistic>(
+                Guid.NewGuid(),
+                nameof(GetUserStatistic),
                 DateTime.Now,
                 requestStatistic);
 
-            return await _cacheRepository.AddAsync(
-                Guid.NewGuid(),
-                queryCache);
+            ExecuteGetUserStatisticAsync(queryCache);
+
+            return queryCache.Id;
         }
 
         public async Task<Result<QueryInfo<UserStatistic>>> GetQueryInfoAsync(Guid queryId)
         {
-            var queryCache = await _cacheRepository.GetAsync<RequestStatistic>(queryId);
+            var queryCache = await _cacheRepository.GetAsync<RequestStatistic, UserStatistic>(queryId);
 
             if (queryCache == null)
                 return Result.Failure<QueryInfo<UserStatistic>>("Query has not been found");
 
-            var percent = (int)((DateTime.Now - queryCache.CreatedDate).TotalSeconds / ExpectedSeconds * 100);
-
-            UserStatistic? userStatistic = null;
-
-            if (percent >= 100)
-            {
-                var result = await _userStatisticRepository.GetAsync(queryCache.QueryDetails);
-
-                percent = 100;
-
-                if (result.IsSuccess)
-                    userStatistic = result.Value;
-            }
+            var percent = Math.Min(
+                (int)((DateTime.Now - queryCache.CreatedDate).TotalSeconds / ExpectedSeconds * 100),
+                100);
 
             return new QueryInfo<UserStatistic>(
                 queryId,
                 percent,
-                userStatistic);
+                queryCache.Result);
+        }
+
+        public async void ExecuteGetUserStatisticAsync(QueryCache<RequestStatistic, UserStatistic> queryCache)
+        {
+            await _cacheRepository.SetCacheAsync(
+                queryCache.Id,
+                queryCache);
+
+            await Task.Delay(ExpectedSeconds * 1000);
+
+            var userStatistic = await _userStatisticRepository.GetAsync(queryCache.QueryDetails);
+
+            queryCache.IsCompleted = true;
+            queryCache.Result = userStatistic.Value;
+
+            await _cacheRepository.SetCacheAsync(
+                queryCache.Id,
+                queryCache);
         }
     }
 }

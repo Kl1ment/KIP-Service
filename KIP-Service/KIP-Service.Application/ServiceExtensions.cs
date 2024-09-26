@@ -1,5 +1,6 @@
 ﻿using KIP_Service.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace KIP_Service.Application
 {
@@ -9,6 +10,7 @@ namespace KIP_Service.Application
         {
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IReportService, ReportService>();
+            services.AddSingleton<IHostedService, TaskRefresher>();
 
             return services;
         }

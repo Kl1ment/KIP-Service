@@ -1,5 +1,4 @@
 ﻿using CSharpFunctionalExtensions;
-using KIP_Service.Core.Models;
 
 namespace KIP_Service.Application.Services
 {

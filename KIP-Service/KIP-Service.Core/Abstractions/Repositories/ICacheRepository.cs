@@ -4,7 +4,7 @@ namespace KIP_Service.DataAccess.Repositories
 {
     public interface ICacheRepository
     {
-        Task<Guid> AddAsync<T>(Guid queryId, QueryCache<T> queryCache);
-        Task<QueryCache<T>?> GetAsync<T>(Guid queryId);
+        Task SetCacheAsync<T, A>(Guid queryId, QueryCache<T, A> queryCache);
+        Task<QueryCache<T, A>?> GetAsync<T, A>(Guid queryId);
     }
 }

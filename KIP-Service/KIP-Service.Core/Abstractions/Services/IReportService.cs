@@ -6,6 +6,7 @@ namespace KIP_Service.Application.Services
     public interface IReportService
     {
         Task<Result<QueryInfo<UserStatistic>>> GetQueryInfoAsync(Guid queryId);
-        Task<Guid> GetUserStatisticAsync(Guid userId, DateTime from, DateTime to);
+        Guid GetUserStatistic(Guid userId, DateTime from, DateTime to);
+        void ExecuteGetUserStatisticAsync(QueryCache<RequestStatistic, UserStatistic> queryCache);
     }
 }

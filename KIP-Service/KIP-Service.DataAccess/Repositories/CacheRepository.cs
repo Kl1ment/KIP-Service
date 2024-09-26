@@ -8,23 +8,21 @@ namespace KIP_Service.DataAccess.Repositories
     {
         private readonly IDistributedCache _cache = cache;
 
-        public async Task<QueryCache<T>?> GetAsync<T>(Guid queryId)
+        public async Task<QueryCache<T, A>?> GetAsync<T, A>(Guid queryId)
         {
             var request = await _cache.GetStringAsync(queryId.ToString());
 
             if (request == null)
                 return null;
 
-            return JsonSerializer.Deserialize<QueryCache<T>>(request);
+            return JsonSerializer.Deserialize<QueryCache<T, A>>(request);
         }
 
-        public async Task<Guid> AddAsync<T>(Guid queryId, QueryCache<T> queryCache)
+        public async Task SetCacheAsync<T, A>(Guid queryId, QueryCache<T, A> queryCache)
         {
             await _cache.SetStringAsync(
                 queryId.ToString(),
                 JsonSerializer.Serialize(queryCache));
-
-            return queryId;
         }
     }
 }

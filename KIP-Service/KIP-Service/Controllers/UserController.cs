@@ -5,8 +5,7 @@ namespace KIP_Service.Controllers
 {
     [ApiController]
     [Route("[controller]/[action]")]
-    public class UserController(
-        IUserService userService) : ControllerBase
+    public class UserController(IUserService userService) : ControllerBase
     {
         private readonly IUserService _userService = userService;
 
@@ -21,7 +20,7 @@ namespace KIP_Service.Controllers
             return result.Value;
         }
 
-        [HttpPost]
+        [HttpGet]
         public async Task<ActionResult> SingIn(Guid userId)
         {
             await _userService.SingInAsync(userId);

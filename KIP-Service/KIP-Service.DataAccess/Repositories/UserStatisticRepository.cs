@@ -2,12 +2,14 @@
 using KIP_Service.Core.Models;
 using KIP_Service.DataAccess.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace KIP_Service.DataAccess.Repositories
 {
     public class UserStatisticRepository(
         KIP_ServiceDbContext context,
+        IConfiguration configuration,
         ILogger<UserStatisticRepository> logger) : IUserStatisticRepository
     {
         private readonly KIP_ServiceDbContext _context = context;
@@ -15,11 +17,29 @@ namespace KIP_Service.DataAccess.Repositories
 
         public async Task<Result<UserStatistic>> GetAsync(RequestStatistic requestStatistic)
         {
-            var userSingInsEntity = await _context.UserSingIns
-                .Where(u => u.UserId == requestStatistic.UserId &&
-                        u.SingInDate >= requestStatistic.From &&
-                        u.SingInDate <= requestStatistic.To)
-                .ToListAsync();
+            List<UserSingInEntity> userSingInsEntity;
+
+            try
+            {
+                userSingInsEntity = await _context.UserSingIns
+                    .AsNoTracking()
+                    .Where(u => u.UserId == requestStatistic.UserId &&
+                                u.SingInDate >= requestStatistic.From &&
+                                u.SingInDate <= requestStatistic.To)
+                    .ToListAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+                using (var context = new KIP_ServiceDbContext(configuration))
+                {
+                    userSingInsEntity = await context.UserSingIns
+                        .AsNoTracking()
+                        .Where(u => u.UserId == requestStatistic.UserId &&
+                                    u.SingInDate >= requestStatistic.From &&
+                                    u.SingInDate <= requestStatistic.To)
+                        .ToListAsync();
+                }
+            }
 
             return new UserStatistic(
                 requestStatistic.UserId,

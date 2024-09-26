@@ -11,9 +11,9 @@ namespace KIP_Service.Controllers
         private readonly IReportService _reportService = reportService;
 
         [HttpPost("user_statistics")]
-        public async Task<ActionResult<Guid>> GetUserStatistic(UserStatisticRequest userStatisticRequest)
+        public ActionResult<Guid> GetUserStatistic(UserStatisticRequest userStatisticRequest)
         {
-            return await _reportService.GetUserStatisticAsync(
+            return _reportService.GetUserStatistic(
                 userStatisticRequest.UserId,
                 userStatisticRequest.From,
                 userStatisticRequest.To);
